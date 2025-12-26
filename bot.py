@@ -22,33 +22,41 @@ logging.basicConfig(
 )
 
 # ---------------- PYROGRAM CLIENT ---------------- #
-app = Client(
+bot = Client(
     "panel_bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
     workers=50,
-    in_memory=False  # Keeps session safe on Render restarts
+    in_memory=False
 )
 
 # ---------------- LOAD HANDLERS ---------------- #
-all_handlers(app)
+all_handlers(bot)
 
-print("🚀 Bot is starting on Render...")
+print("🚀 Starting SMM Panel Bot on Render...")
 
-# ---------------- FLASK KEEP-ALIVE ---------------- #
-PORT = int(os.environ.get("PORT", 8080))  # Render assigns PORT automatically
-server = Flask(__name__)
+# ---------------- BOT THREAD ---------------- #
+def run_bot():
+    print("🤖 Pyrogram bot thread started...")
+    bot.run()
 
-@server.route("/")
+# Start bot in background thread
+Thread(target=run_bot, daemon=True).start()
+
+
+# ---------------- FLASK KEEP-ALIVE (MAIN PROCESS) ---------------- #
+app = Flask(__name__)
+
+@app.route("/")
 def home():
-    return "Bot is running!"
+    return "SMM Panel Bot is alive!"
 
-def run_flask():
-    server.run(host="0.0.0.0", port=PORT)
+@app.route("/health")
+def health():
+    return "OK"
 
-# Start Flask server in a separate thread
-Thread(target=run_flask).start()
-
-# ---------------- RUN BOT ---------------- #
-app.run()
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    print(f"🌐 Flask server running on port {port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
