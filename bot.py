@@ -1,6 +1,6 @@
 # ============================================================
-# Smm Panel Bot
-# Author: LearningBotsOfficial (https://github.com/LearningBotsOfficial) 
+# SMM Panel Bot
+# Author: LearningBotsOfficial (https://github.com/LearningBotsOfficial)
 # Support: https://t.me/LearningBotsCommunity
 # Channel: https://t.me/learning_bots
 # YouTube: https://youtube.com/@learning_bots
@@ -8,36 +8,42 @@
 # ============================================================
 
 import os
-from pyrogram import Client
-from flask import Flask
+import logging
 import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# Import handlers from handlers/__init__.py
-from handlers import all_handlers
-
-
-# ==============================
-# Flask – Health Check (Render)
-# ==============================
-web = Flask(__name__)
-
-@web.get("/health")
-def health():
-    return "OK", 200
-
-
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    web.run(host="0.0.0.0", port=port)
-
+from pyrogram import Client
+from config import API_ID, API_HASH, BOT_TOKEN
+from handlers import all_handlers  # your register_start_handler inside handlers/__init__.py
+from db import db
 
 # ==============================
-# Pyrogram App
+# LOGGING
 # ==============================
-API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# ==============================
+# WEB SERVER (Render / Health check)
+# ==============================
+PORT = int(os.environ.get("PORT", 10000))
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"SMM Panel Bot is running")
+
+def start_web_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    logger.info(f"Web server running on port {PORT}")
+    server.serve_forever()
+
+threading.Thread(target=start_web_server, daemon=True).start()
+
+# ==============================
+# TELEGRAM BOT
+# ==============================
 app = Client(
     "smm_panel_bot",
     api_id=API_ID,
@@ -46,30 +52,12 @@ app = Client(
     workers=50,  # fast handlers
 )
 
+# REGISTER ALL HANDLERS
+all_handlers(app)
 
-# ==============================
-# Start Bot + Load Handlers
-# ==============================
-@app.on_raw_update()
-async def _(*args, **kwargs):
-    # Dummy listener so Pyrogram fully starts
-    pass
+logger.info("🔄 Starting SMM Panel Bot...")
 
+# START BOT
+app.run()
 
-def start_bot():
-    print("🔄 Starting SMM Panel Bot...")
-
-    # REGISTER ALL HANDLERS
-    all_handlers(app)
-
-    # Start Flask in a thread (Render requirement)
-    threading.Thread(target=run_web).start()
-
-    # Start Pyrogram
-    app.run()
-
-    print("🚀 Bot is running!")
-
-
-if __name__ == "__main__":
-    start_bot()
+logger.info("🚀 Bot is running!")
