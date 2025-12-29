@@ -51,7 +51,7 @@ app = Client(
 # Start Bot + Load Handlers
 # ==============================
 @app.on_raw_update()
-async def _(_: Client, __):
+async def _(*args, **kwargs):
     # Dummy listener so Pyrogram fully starts
     pass
 
