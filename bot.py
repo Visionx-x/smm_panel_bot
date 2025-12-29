@@ -1,70 +1,75 @@
 # ============================================================
-# SMM Panel Bot
-# Author: learningbots79 (https://github.com/learningbots79)
+# Smm Panel Bot
+# Author: LearningBotsOfficial (https://github.com/LearningBotsOfficial) 
 # Support: https://t.me/LearningBotsCommunity
+# Channel: https://t.me/learning_bots
+# YouTube: https://youtube.com/@learning_bots
+# License: Open-source (keep credits, no resale)
 # ============================================================
 
 import os
-import logging
-import asyncio
-from threading import Thread
-from flask import Flask
 from pyrogram import Client
-from config import API_ID, API_HASH, BOT_TOKEN
+from flask import Flask
+import threading
+
+# Import handlers from handlers/__init__.py
 from handlers import all_handlers
 
-# ------------- LOGGING ------------- #
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
-)
 
-# ------------- PYROGRAM CLIENT ------------- #
-bot = Client(
-    "panel_bot",
+# ==============================
+# Flask – Health Check (Render)
+# ==============================
+web = Flask(__name__)
+
+@web.get("/health")
+def health():
+    return "OK", 200
+
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web.run(host="0.0.0.0", port=port)
+
+
+# ==============================
+# Pyrogram App
+# ==============================
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+app = Client(
+    "smm_panel_bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    workers=50
+    workers=50,  # fast handlers
 )
 
-# Load handlers
-all_handlers(bot)
-print("✅ Handlers loaded")
+
+# ==============================
+# Start Bot + Load Handlers
+# ==============================
+@app.on_raw_update()
+async def _(_: Client, __):
+    # Dummy listener so Pyrogram fully starts
+    pass
 
 
-# ------------- BOT RUNNER (THREAD SAFE) ------------- #
-def run_bot():
-    print("🤖 Starting Pyrogram bot thread...")
+def start_bot():
+    print("🔄 Starting SMM Panel Bot...")
 
-    # Create event loop for this thread
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    # REGISTER ALL HANDLERS
+    all_handlers(app)
 
-    try:
-        bot.run()
-    except Exception as e:
-        print("❌ Bot crashed:", e)
+    # Start Flask in a thread (Render requirement)
+    threading.Thread(target=run_web).start()
 
+    # Start Pyrogram
+    app.run()
 
-# Start bot in background thread
-Thread(target=run_bot, daemon=True).start()
+    print("🚀 Bot is running!")
 
 
-# ------------- FLASK KEEP-ALIVE ------------- #
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "SMM Panel Bot is alive!"
-
-@app.route("/health")
-def health():
-    return "OK"
-
-
-# ------------- START FLASK (MAIN PROCESS) ------------- #
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    print(f"🌐 Flask server running on port {port}")
-    app.run(host="0.0.0.0", port=port)
+    start_bot()
