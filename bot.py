@@ -50,6 +50,7 @@ app = Client(
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
     workers=50,  # fast handlers
+    in_memory=True
 )
 
 # REGISTER ALL HANDLERS
